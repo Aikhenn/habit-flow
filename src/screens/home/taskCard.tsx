@@ -5,38 +5,38 @@ import Chip from "../../components/chip";
 import { CATEGORIES } from "../../constants/constant";
 import hexToRgba from "../../utils/hexConverter";
 import { memo } from "react";
+import { Task } from "../../database/database";
 
 interface taskCardProps {
-    task: task;
+    task: Task;
     onPress: () => void;
 
-}
-
-interface task {
-    title: string;
-    dueAt: string;
-    category: string;
-    isChecked: boolean;
 }
 
 
 const TaskCard = ({task, onPress}: taskCardProps) => {
 
-    const categoryColor = CATEGORIES.find((category) =>
-        category.name === task.category
-    )!.color ?? COLORS.BLACK;
+    const category = CATEGORIES.find(
+        item => item.id === task.category_id
+    );
 
-    const time = new Date(task.dueAt).toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-    })
+    const categoryColor = category?.color ?? COLORS.BLACK;
+    const isChecked = task.is_completed === 1;
+
+    const time = task.created_at
+            ? new Date(task.created_at).toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+            })
+            : "No time set";
+
     console.log('taskcard render')
 
     return (
         <View style={styles.taskContainer}>
             <View style={[styles.line, {backgroundColor: categoryColor  }]}/>
-               <Pressable style={!task.isChecked && styles.unchecked} onPress={onPress} >
-                    {task.isChecked ? (
+               <Pressable style={!isChecked && styles.unchecked} onPress={onPress} >
+                    {isChecked ? (
                         <Octicons name="check-circle-fill" size={26} color={categoryColor}/>
                     ): (
                         <Octicons name="circle" size={26}/>
@@ -44,10 +44,10 @@ const TaskCard = ({task, onPress}: taskCardProps) => {
                 </Pressable>
 
             <View style={styles.textContainer}>
-                <Text style={task.isChecked ? styles.titleChecked : styles.title}>{task.title}</Text>
+                <Text style={isChecked ? styles.titleChecked : styles.title}>{task.title}</Text>
                 <View style={styles.bottomText}>
                     <Chip 
-                        title={task.category} 
+                        title={category?.name || "Unknown Category"} 
                         bgColor={hexToRgba( categoryColor, 0.2)}
                         color={categoryColor}
                         containerStyle={styles.chipStyle}

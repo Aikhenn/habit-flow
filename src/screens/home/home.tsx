@@ -4,38 +4,64 @@ import HomeHeader from "./header";
 import TaskCard from "./taskCard";
 import ProgressBar from "../../components/progressBar";
 import Chip from "../../components/chip";
-import {  useRef, useState } from "react";
+import {  useEffect, useRef, useState } from "react";
 import hexToRgba from "../../utils/hexConverter";
 import { CATEGORIES } from "../../constants/constant";
 import MaterialIcons from "@react-native-vector-icons/material-icons";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import AddTask
- from "./addTask";
-const taskData = [
-    {id: 1, title: "take out trash", dueAt: "2026-08-14T18:30:00",category: 'Work', isChecked: false},
-    {id: 2, title: "clean room",  dueAt: "2026-10-04T18:30:00", category: 'Study',isChecked: false},
-    {id: 3, title: "clean room",  dueAt: "2026-10-04T18:30:00", category: 'Study',isChecked: false},
-    {id: 4, title: "clean room",  dueAt: "2026-10-04T18:30:00", category: 'Work',isChecked: false},
-    {id: 5, title: "clean room",  dueAt: "2026-10-04T18:30:00", category: 'Personal',isChecked: false},
-    {id: 6, title: "clean room",  dueAt: "2026-10-04T18:30:00", category: 'Personal',isChecked: false},
-    {id: 7, title: "clean room",  dueAt: "2026-10-04T18:30:00", category: 'Health',isChecked: false},
-]
+import AddTask from "./addTask";
+import { getTasks, updateTaskCompletion, type Task } from "../../database/database";
+
 
 function HomeScreen() {
-    const [tasks, setTasks] = useState(taskData);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
     const [selectedCategory, setSelectedCategory] = useState(0);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const bottomSheetRef = useRef<BottomSheetModal>(null);
 
-    const toggleTask = (id: number) => {
-        setTasks(prevTasks => prevTasks.map(task =>
-            task.id === id 
-                ? {...task, isChecked: !task.isChecked}
-                : task
-        ));
+    const loadTasks = async () => {
+        try{
+            const savedTasks = await getTasks();
+            setTasks(savedTasks);
+            console.log('Loaded tasks:', savedTasks);
+
+        } catch (error) {
+            console.error('Failed to load tasks:', error);
+        } finally {
+            setIsLoading(false);
+        }
     }
 
-    const renderTask = ({item}: {item: typeof taskData[number]})=> (
+
+    const toggleTask = async (id: number) => {
+        const task = tasks.find(item => item.id === id);
+        if (!task) return;
+
+        //checks current status of the task and sets the next status
+        const nextCompleted = task.is_completed === 0;
+
+        try {
+            await updateTaskCompletion(id, nextCompleted);
+
+            setTasks(prevTasks =>
+                prevTasks.map(item =>
+                    item.id === id
+                        ? {
+                            ...item,
+                            is_completed: nextCompleted ? 1 : 0,
+                        }
+                        : item
+                )
+            );
+        } catch (error) {
+            console.error("Error updating task:", error);
+        }
+    };
+
+
+    const renderTask = ({item}: {item: Task})=> (
         <TaskCard
             task={item}
             onPress={() => toggleTask(item.id)}
@@ -51,26 +77,31 @@ function HomeScreen() {
     };
 
     const isAllSelected = selectedCategory === 0;
-    const selectedCategoryName = CATEGORIES.find((category) => category.id === selectedCategory)?.name
 
-    const filteredTask = tasks.filter((task) => 
-            isSameDate(task.dueAt, selectedDate) &&
-            //if all selected show all otherwise match by category
-            (isAllSelected || task.category === selectedCategoryName  )
-            )
+    const filteredTask = tasks.filter((task) => {
+        const matchesCategory =  isAllSelected || task.category_id === selectedCategory;
+        const matchesDate = task.created_at
+            ? isSameDate(task.created_at, selectedDate)
+            : false;
 
-    const completedTask = tasks.filter((task) => task.isChecked === true).length
+        return matchesCategory && matchesDate;
+    });
+
+    const completedTask = tasks.filter((task) => task.is_completed === 1).length
     const currentProgress = completedTask / tasks.length * 100
 
     const openAddTask = () => {
-        console.log("FAB PRESSED");
-            console.log("REF:", bottomSheetRef.current);
-
-        
-    setTimeout(() => {
         bottomSheetRef.current?.present();
-    }, 100);
     }
+
+    const handleTaskSaved = async () => {
+        await loadTasks();
+        bottomSheetRef.current?.dismiss();
+    };
+        
+    useEffect(() => {
+        loadTasks();
+    }, []);
 
     return ( 
         <>
@@ -80,6 +111,7 @@ function HomeScreen() {
                 <Text>{completedTask} / {tasks.length}</Text>
                 <ProgressBar progress={currentProgress}/>
             </View>
+            
             <View style={styles.chipList}>
                 {CATEGORIES.map((category) => {
                     const isSelected = selectedCategory === category.id
@@ -107,7 +139,7 @@ function HomeScreen() {
                     <MaterialIcons name="add" size={48} color={COLORS.WHITE}/>
                 </Pressable>
         </View>
-            <AddTask ref={bottomSheetRef}/>
+            <AddTask ref={bottomSheetRef} onTaskSaved={handleTaskSaved}/>
         </> 
 
     );

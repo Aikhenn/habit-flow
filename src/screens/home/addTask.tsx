@@ -1,28 +1,81 @@
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable react/no-unstable-nested-components */
 import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
-import { forwardRef, useMemo, useState } from "react";
-import { View, Text, TextInput, StyleSheet, Switch,  Pressable } from "react-native";
+import React, { forwardRef, useMemo,  useState } from "react";
+import { View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import COLORS from "../../constants/colors";
 import Chip from "../../components/chip";
 import { CATEGORIES } from "../../constants/constant";
 import hexToRgba from "../../utils/hexConverter";
 import Octicons from "@react-native-vector-icons/octicons";
 import MaterialIcons from "@react-native-vector-icons/material-icons";
+import { addTask } from "../../database/database";
+import SettingCard from "../../components/settingCard";
+import CalendarModal from "../../components/calendarModal";
+import { RepeatFrequency } from "./components/repeatTypes";
+import RepeatSettingsSheet from "./components/repeatSettingsSheet";
+interface AddTaskProps {
+    onTaskSaved: () => void | Promise<void>;
+}
 
-const AddTask = forwardRef<BottomSheetModal>((_, ref) => {    
+const AddTask = forwardRef<BottomSheetModal, AddTaskProps>(({onTaskSaved }, ref) => {     
     const snapPoints = useMemo(() => ["75%"], []);
     const [selectedCategory, setSelectedCategory] = useState(0);
+    const [selectedDate, setSelectedDate] = useState(new Date());
     const [timeEnabled, setTimeEnabled] =useState(false);
-    const [dailyEnabled, setDailyEnabled] =useState(false);
-    const [weeklyEnabled, setWeeklyEnabled] =useState(false);
+    const [repeatEnabled, setRepeatEnabled] = useState(false);
+    const [dailyRepeat, setDailyRepeat] =useState(0);
+    const [weeklyRepeat, setWeeklyRepeat] =useState(0);
+    const [monthlyRepeat, setMonthlyRepeat] =useState(0);
     const [taskName, setTaskName] = useState('');
-
+    const [selectedTime, setSelectedTime] = useState("08:00 AM");
     const filteredCategories = CATEGORIES.filter((category) => category.id !== 0 )
 
-    const handleAddPress = () => {
+    const [calendarVisible, setCalendarVisible] = useState(false);
+    const [repeatFrequency, setRepeatFrequency] = useState<RepeatFrequency>("none");
+    const [repeatPageVisible, setRepeatPageVisible] = useState(false);
+
+    const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
+
+    const handleAddPress =  async () => {
 
         console.log('taskname ', taskName);
+        const title = taskName.trim();
+
+        if (!title) {
+            console.warn('Please enter a task name.');
+            return;
+        }
+
+        if (selectedCategory === 0) {
+            console.warn('Please select a category.');
+            return;
+        }
+
+        try {
+            await addTask({
+                title: title, 
+                category_id: selectedCategory,
+                date: selectedDate.toISOString(),
+                scheduled_time: timeEnabled ? new Date().toISOString() : null,
+                repeat_daily: dailyRepeat,
+                repeat_weekly: weeklyRepeat,
+                repeat_monthly: monthlyRepeat,
+            });
+            console.log('Task added successfully!');
+            // Notify HomeScreen that the task was saved
+            await onTaskSaved();
+
+            // Reset the form
+            setTaskName("");
+            setSelectedCategory(0);
+            setTimeEnabled(false);
+            setDailyRepeat(0);
+            setWeeklyRepeat(0);
+            setMonthlyRepeat(0);
+        } catch (error) {
+            console.error('Failed to add task:', error);
+        }
     }
 
     return ( 
@@ -44,7 +97,8 @@ const AddTask = forwardRef<BottomSheetModal>((_, ref) => {
                 boxShadow: '3px 0px 20px rgba(0,0,0, 0.2)'
             }}
         >
-            <View style={styles.container}>
+            <View style={styles.sheetContent}>
+            <View style={styles.mainPage}>
                 <Text style={styles.textHeading}>New Task</Text>
                 <Text style={styles.subText}>TASK</Text>
                 <TextInput
@@ -73,49 +127,63 @@ const AddTask = forwardRef<BottomSheetModal>((_, ref) => {
                         )
                     })}
                 </View>
+
+                {/**Date UI */}
+                <Text style={styles.inputTitle}>Date</Text>
+                <SettingCard
+                    value={timeEnabled}
+                    setValue={setTimeEnabled}
+                    icon={<Octicons name="calendar" size={18} color="rgba(0, 0, 0, 0.5)"/>}
+                    title={selectedDate.toDateString()}
+                    isPressable={true}
+                    onPress={() => setCalendarVisible(true)}
+                />
+
+                <CalendarModal
+                    visible={calendarVisible}
+                    selectedDate={selectedDate}
+                    onClose={() => setCalendarVisible(false)}
+                    onConfirm={setSelectedDate}
+                />
+
                 {/**Time UI */}
                 <Text style={styles.inputTitle}>Time</Text>
-                <View style={styles.input}>
-                    <Octicons name="clock" size={18} color="rgba(0, 0, 0, 0.5)"/>            
-                    <View>
-                        <Text>Set Time</Text>
-                        <Text style={styles.subText}>No time set</Text>
-                    </View>
-                    <Switch
-                        style={styles.switch} 
-                        value={timeEnabled} 
-                        onValueChange={setTimeEnabled}
+                <SettingCard
+                    value={timeEnabled}
+                    setValue={setTimeEnabled}
+                    icon={<Octicons name="clock" size={18} color="rgba(0, 0, 0, 0.5)"/>}
+                    title="Set Time"
+                    subText={timeEnabled ? "Time is set" : "No time set"}
+                />
+                {timeEnabled && (
+                    <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 08:30 AM"
+                        value={selectedTime}
+                        onChangeText={setSelectedTime}
+                        keyboardType="numbers-and-punctuation"
+                        maxLength={8}
+                        autoCapitalize="characters"
                     />
-                </View>
+                )}
+                                
 
                 {/**Repeat UI */}
                 <Text style={styles.inputTitle}>Repeat</Text>
-                <View style={styles.input}>
-                    <MaterialIcons name="repeat" size={18} color="rgba(0, 0, 0, 0.5)"/>            
-                    <View>
-                        <Text>Daily</Text>
-                        <Text style={styles.subText}>Repeat every day</Text>
-                    </View>
-                    <Switch
-                        style={styles.switch} 
-                        value={dailyEnabled} 
-                        onValueChange={setDailyEnabled}
-                    />
-                </View>
 
-                 <View style={styles.input}>
-                    <MaterialIcons name="repeat" size={18} color="rgba(0, 0, 0, 0.5)"/>            
-                    <View>
-                        <Text>Weekly</Text>
-                        <Text style={styles.subText}>Pick specific days</Text>
-                    </View>
-
-                    <Switch
-                        style={styles.switch} 
-                        value={weeklyEnabled} 
-                        onValueChange={setWeeklyEnabled}
-                    />                
-                </View>
+                <SettingCard
+                    value={repeatFrequency !== "none"}
+                    setValue={() => {}}
+                    icon={<MaterialIcons name="repeat" size={18} color="rgba(0, 0, 0, 0.5)" />}
+                    title="Repeat"
+                    subText={
+                        repeatFrequency === "none"
+                            ? "Does not repeat"
+                            : `Repeats ${repeatFrequency}`
+                    }
+                    isPressable
+                    onPress={() => setRepeatPageVisible(true)}
+                />
 
                 <Pressable style={styles.button} onPress={handleAddPress} >
                     <Text style={styles.buttonText}>Add Task</Text>
@@ -124,6 +192,19 @@ const AddTask = forwardRef<BottomSheetModal>((_, ref) => {
 
             </View>
 
+            <RepeatSettingsSheet
+                visible={repeatPageVisible}
+                frequency={repeatFrequency}
+                selectedDate={selectedDate}
+                selectedWeekdays={selectedWeekdays}
+                repeatEnabled={repeatEnabled}
+                setRepeatEnabled={setRepeatEnabled}
+                onFrequencyChange={setRepeatFrequency}
+                onWeekdaysChange={setSelectedWeekdays}
+                onDatePress={() => setCalendarVisible(true)}
+                onClose={() => setRepeatPageVisible(false)}
+            />
+            </View>
         </BottomSheetModal>
      );
 });
@@ -136,6 +217,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         flex: 1,
         justifyContent: 'space-between'
+    },
+
+    sheetContent: {
+    flex: 1,
+    position: "relative",
+    },
+
+    mainPage: {
+        flex: 1,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        justifyContent: "space-between",
     },
     textHeading: {
         fontWeight: 'bold',

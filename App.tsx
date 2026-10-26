@@ -13,9 +13,18 @@ import {
 } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/navigation';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { useEffect } from 'react';
+import { initializeDatabase } from './src/database/database';
 
 function App() {
  // const isDarkMode = useColorScheme() === 'dark';
+
+ useEffect(() => {
+    initializeDatabase().catch((error) => {
+      console.error('Failed to initialize database:', error);
+    });
+  }, []);
+
 
   return (
       <GestureHandlerRootView style={{ flex: 1 }}>
