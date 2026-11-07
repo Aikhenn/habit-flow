@@ -5,8 +5,8 @@ import CustomSwitch from "./customSwitch";
 import MaterialIcons from "@react-native-vector-icons/material-icons";
 
 interface SettingCardProps {
-    value: boolean;
-    setValue: (value: boolean) => void;
+    value?: boolean;
+    setValue?: (value: boolean) => void;
     icon: ReactNode;
     title: string;
     subText?: string;
@@ -15,8 +15,8 @@ interface SettingCardProps {
 }
 
 function SettingCard({
-    value,
-    setValue,
+    value = false,
+    setValue =  () => {},
     icon,
     title,
     subText,

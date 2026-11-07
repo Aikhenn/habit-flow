@@ -11,7 +11,8 @@ import MaterialIcons from "@react-native-vector-icons/material-icons";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import AddTask from "./addTask";
 import { getTasks, updateTaskCompletion, type Task } from "../../database/database";
-
+import { handleResetDatabase } from "../../utils/resetDatabase";
+import { formatDate } from "../../utils/dateFormatter";
 
 function HomeScreen() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -23,22 +24,21 @@ function HomeScreen() {
 
     const loadTasks = async () => {
         try{
-            const savedTasks = await getTasks();
+            const savedTasks = await getTasks(formatDate(selectedDate));
             setTasks(savedTasks);
             console.log('Loaded tasks:', savedTasks);
 
         } catch (error) {
             console.error('Failed to load tasks:', error);
         } finally {
-            setIsLoading(false);
-        }
+                setIsLoading(false);
+            }
     }
 
 
     const toggleTask = async (id: number) => {
         const task = tasks.find(item => item.id === id);
         if (!task) return;
-
         //checks current status of the task and sets the next status
         const nextCompleted = task.is_completed === 0;
 
@@ -68,23 +68,11 @@ function HomeScreen() {
         />
     )
 
-    const isSameDate = (dueAt: string, date: Date) => {
-        const dateString = `${date.getFullYear()}-${String(
-            date.getMonth() + 1
-        ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-        return dueAt.split("T")[0] === dateString;
-    };
-
     const isAllSelected = selectedCategory === 0;
 
     const filteredTask = tasks.filter((task) => {
         const matchesCategory =  isAllSelected || task.category_id === selectedCategory;
-        const matchesDate = task.created_at
-            ? isSameDate(task.created_at, selectedDate)
-            : false;
-
-        return matchesCategory && matchesDate;
+        return matchesCategory ;
     });
 
     const completedTask = tasks.filter((task) => task.is_completed === 1).length
@@ -101,12 +89,16 @@ function HomeScreen() {
         
     useEffect(() => {
         loadTasks();
-    }, []);
+    }, [selectedDate]);
 
     return ( 
         <>
         <View style={styles.container}>
-            <HomeHeader selectedDate={selectedDate} setSelectedDate={setSelectedDate}/>
+            <HomeHeader 
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+                loadTask={loadTasks}
+            />
             <View style={styles.ProgressContainer}>
                 <Text>{completedTask} / {tasks.length}</Text>
                 <ProgressBar progress={currentProgress}/>
@@ -135,6 +127,28 @@ function HomeScreen() {
                 data={filteredTask}
                 renderItem={renderTask}
             />
+            {/* Developer Button */}
+            {__DEV__ && (
+                <Pressable
+                    style={styles.devFab}
+                    onPress={handleResetDatabase}
+                >
+                    <MaterialIcons
+                        name="bug-report"
+                        size={24}
+                        color={COLORS.WHITE}
+                    />
+                </Pressable>
+            )}
+
+            {/* Add Task Button */}
+            <Pressable style={styles.fab} onPress={openAddTask}>
+                <MaterialIcons
+                    name="add"
+                    size={48}
+                    color={COLORS.WHITE}
+                />
+            </Pressable>
                 <Pressable style={styles.fab} onPress={openAddTask}>
                     <MaterialIcons name="add" size={48} color={COLORS.WHITE}/>
                 </Pressable>
@@ -179,7 +193,16 @@ const styles = StyleSheet.create({
         borderRadius: 100,
         boxShadow: '2px 4px 8px rgba(0, 0, 0, 0.4)',
         backgroundColor: COLORS.primary
-    }
+    },
+    devFab: {
+    position: "absolute",
+    right: 32,
+    bottom: 115,
+    padding: 12,
+    borderRadius: 100,
+    backgroundColor: "#555555",
+    elevation: 5,
+},
 
 
 });

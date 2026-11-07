@@ -13,10 +13,11 @@ interface Day {
 interface HomeHeaderProps {
     selectedDate: Date,
     setSelectedDate: Dispatch<SetStateAction<Date>>;
+    loadTask : () => void;
 }
 
 
-function HomeHeader({selectedDate, setSelectedDate} :HomeHeaderProps) {
+function HomeHeader({selectedDate, setSelectedDate, loadTask} :HomeHeaderProps) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const nextWeek = () => {
@@ -37,7 +38,8 @@ function HomeHeader({selectedDate, setSelectedDate} :HomeHeaderProps) {
 
     const onDayPress = useCallback((item: Day) => {
         setSelectedDate(item.fullDate)
-    },[setSelectedDate])
+        loadTask();
+    },[setSelectedDate, loadTask])
 
     return ( 
         <View style={styles.container}>
@@ -55,7 +57,7 @@ function HomeHeader({selectedDate, setSelectedDate} :HomeHeaderProps) {
                     </View>
                     <View style={styles.arrowContainer}>
                         <Pressable 
-                            onPress={nextWeek}
+                            onPress={previousWeek}
                             style={({ pressed}) => [
                                 styles.arrowButton,
                                 pressed && styles.arrowButtonPressed
@@ -64,7 +66,7 @@ function HomeHeader({selectedDate, setSelectedDate} :HomeHeaderProps) {
                             <MaterialIcons name="arrow-back-ios-new" size={20}/>
                         </Pressable>
                         <Pressable 
-                            onPress={previousWeek}
+                            onPress={nextWeek}
                             style={({ pressed}) => [
                                 styles.arrowButton,
                                 pressed && styles.arrowButtonPressed

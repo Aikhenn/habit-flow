@@ -14,6 +14,7 @@ import SettingCard from "../../components/settingCard";
 import CalendarModal from "../../components/calendarModal";
 import { RepeatFrequency } from "./components/repeatTypes";
 import RepeatSettingsSheet from "./components/repeatSettingsSheet";
+import { formatDate } from "../../utils/dateFormatter";
 interface AddTaskProps {
     onTaskSaved: () => void | Promise<void>;
 }
@@ -56,19 +57,20 @@ const AddTask = forwardRef<BottomSheetModal, AddTaskProps>(({onTaskSaved }, ref)
             await addTask({
                 title: title, 
                 category_id: selectedCategory,
-                date: selectedDate.toISOString(),
+                date: formatDate(selectedDate),
                 scheduled_time: timeEnabled ? new Date().toISOString() : null,
                 repeat_daily: dailyRepeat,
                 repeat_weekly: weeklyRepeat,
                 repeat_monthly: monthlyRepeat,
             });
-            console.log('Task added successfully!');
+            console.log('Task added successfully!', );
             // Notify HomeScreen that the task was saved
             await onTaskSaved();
 
             // Reset the form
             setTaskName("");
             setSelectedCategory(0);
+            setSelectedDate(new Date());
             setTimeEnabled(false);
             setDailyRepeat(0);
             setWeeklyRepeat(0);
@@ -131,8 +133,6 @@ const AddTask = forwardRef<BottomSheetModal, AddTaskProps>(({onTaskSaved }, ref)
                 {/**Date UI */}
                 <Text style={styles.inputTitle}>Date</Text>
                 <SettingCard
-                    value={timeEnabled}
-                    setValue={setTimeEnabled}
                     icon={<Octicons name="calendar" size={18} color="rgba(0, 0, 0, 0.5)"/>}
                     title={selectedDate.toDateString()}
                     isPressable={true}
@@ -143,7 +143,9 @@ const AddTask = forwardRef<BottomSheetModal, AddTaskProps>(({onTaskSaved }, ref)
                     visible={calendarVisible}
                     selectedDate={selectedDate}
                     onClose={() => setCalendarVisible(false)}
-                    onConfirm={setSelectedDate}
+                    onConfirm={(date) => {
+                        setSelectedDate(date)
+                    }}
                 />
 
                 {/**Time UI */}

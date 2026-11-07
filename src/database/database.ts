@@ -2,6 +2,14 @@ import { open } from 'react-native-nitro-sqlite';
 
 export const db = open({ name: 'habitflow.sqlite'});
 
+export async function resetDatabase() {
+    await db.executeAsync(`
+        DROP TABLE IF EXISTS tasks;
+    `);
+
+    await initializeDatabase();
+}
+
 export async function initializeDatabase() {
     await db.executeAsync(`
         CREATE TABLE IF NOT EXISTS tasks (
@@ -12,7 +20,7 @@ export async function initializeDatabase() {
             scheduled_time TEXT,
             repeat_daily INTEGER NOT NULL DEFAULT 0,
             repeat_weekly INTEGER NOT NULL DEFAULT 0,
-            reopeat_monthly INTEGER NOT NULL DEFAULT 0,
+            repeat_monthly INTEGER NOT NULL DEFAULT 0,
             is_completed INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL        
         );
@@ -67,10 +75,11 @@ export type Task = {
     created_at: string;
 };
 
-export async function getTasks(): Promise<Task[]> {
-    const result = await db.executeAsync(`
-        SELECT * FROM tasks ORDER BY id DESC
-    `);
+export async function getTasks(date?: string): Promise<Task[]> {
+       const result = await db.executeAsync(`
+        SELECT * FROM tasks WHERE date = ? ORDER BY id DESC
+    `, [date]);
+
 
     return result.rows._array as Task[];
 }

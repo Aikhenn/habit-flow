@@ -78,6 +78,21 @@ export default function CalendarModal({
         setMonthDate(new Date(year, month + amount, 1));
     };
 
+    const handleDayPress = (day: number) => {
+        const newDate = new Date(year, month, day);
+        setDraftDate(newDate);
+
+        console.log("Calendar year:", year);
+        console.log("Calendar month:", month);
+        console.log("Selected day:", day);
+
+        console.log("Constructed date:", newDate.toString());
+        console.log("Local date:", newDate.getDate());
+        console.log("ISO date:", newDate.toISOString());
+
+    };
+    
+
     return (
         <Modal
             visible={visible}
@@ -195,7 +210,7 @@ export default function CalendarModal({
                                 <Pressable
                                     key={`${year}-${month}-${day}`}
                                     disabled={isPast}
-                                    onPress={() => setDraftDate(date)}
+                                    onPress={handleDayPress.bind(null, day)}
                                     style={({ pressed }) => [
                                         styles.dayCell,
                                         pressed &&
